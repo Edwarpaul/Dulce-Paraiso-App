@@ -181,38 +181,8 @@
       </select>
     </div>
     <div class="input-group" style="margin-top:14px;margin-bottom:0">
-      <label>Relleno</label>
-      <select id="rellenoInput">
-        <option value="">Sin relleno</option>
-        <optgroup label="── Mousses ──">
-          <option>Mousse de frutos rojos</option>
-          <option>Mousse de frambuesa</option>
-          <option>Mousse de fresa</option>
-          <option>Mousse de chocolate negro</option>
-          <option>Mousse de chocolate blanco</option>
-          <option>Mousse de mango</option>
-          <option>Mousse de limón</option>
-          <option>Mousse de maracuyá</option>
-        </optgroup>
-        <optgroup label="── Cremas ──">
-          <option>Crema pastelera</option>
-          <option>Crema diplomática</option>
-          <option>Crema de queso</option>
-          <option>Lemon curd</option>
-          <option>Nata montada</option>
-          <option>Trufa</option>
-          <option>Ganache de chocolate</option>
-          <option>Dulce de leche</option>
-          <option>Caramelo salado</option>
-        </optgroup>
-        <optgroup label="── Mermeladas / Frutas ──">
-          <option>Mermelada de frambuesa</option>
-          <option>Mermelada de fresa</option>
-          <option>Mermelada de albaricoque</option>
-          <option>Compota de frutos rojos</option>
-          <option>Compota de manzana</option>
-        </optgroup>
-      </select>
+      <label>Relleno (opcional)</label>
+      <input type="text" id="rellenoInput" placeholder="ej: mousse de frutos rojos" autocomplete="off" autocorrect="off" autocapitalize="off">
     </div>
     <button class="btn-primary" id="btnBuscar" onclick="buscarReceta()" style="margin-top:16px">Buscar receta</button>
   </div>
