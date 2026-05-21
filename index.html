@@ -353,20 +353,9 @@ async function buscarReceta() {
     showRecetaLoading('Leyendo la receta...');
     const detalles = await obtenerDetallesVideo(video.videoId);
 
-    showRecetaLoading(`Preparando para ${personas} personas...`);
-    const recetaTexto = await llamarGroq(promptReceta(tarta, personas, raciones, detalles.description, detalles.title));
-
-    let rellenoTexto = '';
-    if (relleno) {
-      showRecetaLoading(`Calculando relleno: ${relleno}...`);
-      rellenoTexto = await llamarGroq(promptRelleno(relleno, raciones, personas));
-    }
-
-    let coberturaTexto = '';
-    if (cobertura) {
-      showRecetaLoading(`Calculando cobertura: ${cobertura}...`);
-      coberturaTexto = await llamarGroq(promptCobertura(cobertura, raciones, personas));
-    }
+    showRecetaLoading(`Preparando receta completa...`);
+    const resultado = await llamarGroq(promptCombinado(tarta, personas, raciones, relleno, cobertura, detalles.description, detalles.title));
+    const { recetaTexto, rellenoTexto, coberturaTexto } = parsearResultado(resultado, !!relleno, !!cobertura);
 
     recetaActual = { tarta, personas, raciones, relleno, cobertura, recetaTexto, rellenoTexto, coberturaTexto, videoId: video.videoId, videoTitle: detalles.title };
 
@@ -477,47 +466,60 @@ async function llamarGroq(prompt, messages = null, vision = false) {
   return data.choices[0].message.content;
 }
 
-function promptReceta(tarta, personas, raciones, desc, titulo) {
-  return `Eres el asistente de "Dulce Paraíso", pastelería artesanal española.
-Video: "${titulo}"
-DESCRIPCIÓN: ${desc.substring(0, 5000)}
-Extrae la receta de "${tarta}" y escálala para ${raciones} raciones (${personas} personas).
-Si no hay ingredientes en la descripción, usa tu conocimiento para dar cantidades para ${raciones} raciones.
-Formato EXACTO (sin texto extra):
-## 🥚 INGREDIENTES — ${raciones} raciones
+function promptCombinado(tarta, personas, raciones, relleno, cobertura, desc, titulo) {
+  const extras = [];
+  if (relleno)   extras.push(`RELLENO: "${relleno}" (para 2-3 capas, ${raciones} raciones)`);
+  if (cobertura) extras.push(`COBERTURA: "${cobertura}" (para cubrir toda la tarta, ${raciones} raciones)`);
+
+  return `Eres el asistente de repostería de "Dulce Paraíso", pastelería artesanal española. Responde SOLO en español con cantidades exactas y prácticas.
+
+Video de referencia: "${titulo}"
+DESCRIPCIÓN: ${desc.substring(0, 3000)}
+
+Genera TODO lo siguiente en UNA SOLA respuesta para ${raciones} raciones (${personas} personas):
+
+===RECETA===
+## 🥚 INGREDIENTES BIZCOCHO — ${raciones} raciones
 - ingrediente: cantidad
 ## 👩‍🍳 PREPARACIÓN
-1. paso
+1. paso concreto
 ## ⏱️ TIEMPOS
-temperatura y tiempos
+Temperatura y tiempos exactos
 ## 💡 CONSEJOS
-1-2 trucos`;
-}
-
-function promptRelleno(relleno, raciones, personas) {
-  return `Eres el asistente de "Dulce Paraíso", pastelería artesanal española.
-Dame la receta de "${relleno}" para rellenar una tarta de ${raciones} raciones (${personas} personas). Ten en cuenta que habrá 2-3 capas de relleno.
-Formato EXACTO:
-## 🍓 ${relleno.toUpperCase()} — relleno para ${raciones} raciones
+1-2 trucos
+===FIN_RECETA===
+${relleno ? `
+===RELLENO===
+## 🍓 ${relleno.toUpperCase()} — ${raciones} raciones
 ## 🥚 INGREDIENTES
 - ingrediente: cantidad exacta
 ## 👩‍🍳 PREPARACIÓN
 1. paso
 ## 💡 CONSEJOS
-1-2 trucos para que quede perfecto`;
-}
-
-function promptCobertura(cobertura, raciones, personas) {
-  return `Eres el asistente de "Dulce Paraíso", pastelería artesanal española.
-Dame la receta de "${cobertura}" para cubrir y rellenar una tarta de ${raciones} raciones (${personas} personas).
-Formato EXACTO:
+1 truco
+===FIN_RELLENO===` : ''}
+${cobertura ? `
+===COBERTURA===
 ## 🎨 ${cobertura.toUpperCase()} — ${raciones} raciones
 ## 🥚 INGREDIENTES
 - ingrediente: cantidad exacta
 ## 👩‍🍳 PREPARACIÓN
 1. paso
 ## 💡 CONSEJOS
-1-2 trucos clave`;
+1 truco
+===FIN_COBERTURA===` : ''}`;
+}
+
+function parsearResultado(texto, tieneRelleno, tieneCobertura) {
+  const entre = (txt, ini, fin) => {
+    const a = txt.indexOf(ini), b = txt.indexOf(fin);
+    return (a !== -1 && b !== -1) ? txt.slice(a + ini.length, b).trim() : txt.trim();
+  };
+  return {
+    recetaTexto:   entre(texto, '===RECETA===', '===FIN_RECETA==='),
+    rellenoTexto:  tieneRelleno   ? entre(texto, '===RELLENO===', '===FIN_RELLENO===')   : '',
+    coberturaTexto: tieneCobertura ? entre(texto, '===COBERTURA===', '===FIN_COBERTURA===') : ''
+  };
 }
 
 function formatReceta(txt) {
