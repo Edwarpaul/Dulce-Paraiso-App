@@ -433,7 +433,7 @@ async function obtenerDetallesVideo(videoId) {
 
 // ── GROQ ─────────────────────────────────────────────────────
 async function llamarGroq(prompt, messages = null, vision = false) {
-  const model = vision ? 'llama-3.2-11b-vision-preview' : 'llama-3.1-8b-instant';
+  const model = vision ? 'meta-llama/llama-4-scout-17b-16e-instruct' : 'llama-3.1-8b-instant';
   const msgs  = messages || [{ role: 'user', content: prompt }];
   const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
