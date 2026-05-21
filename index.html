@@ -314,7 +314,7 @@
 
   <script>
     const YT_KEY = 'AIzaSyAzwMnrANI2YEW0em3fPil0LZrScecZbYQ';
-    const GM_KEY = 'AIzaSyCZDEnc_nbmkWSmrZNuxsMK8PkvsdFP-SY';
+    const GROQ_KEY = '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';
 
     const $ = id => document.getElementById(id);
     const show = id => $(id).style.display = 'block';
@@ -449,20 +449,28 @@ Responde ÚNICAMENTE con este formato (sin texto adicional antes ni después):
 ## 💡 CONSEJOS
 [1-3 trucos útiles de la receta]`;
 
-      const url = `https://generativelanguage.googleapis.com/v1/models/gemini-1.5-flash:generateContent?key=${GM_KEY}`;
+      const url = `https://api.groq.com/openai/v1/chat/completions`;
       const res = await fetch(url, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${GROQ_KEY}`
+        },
+        body: JSON.stringify({
+          model: 'llama-3.1-8b-instant',
+          messages: [{ role: 'user', content: prompt }],
+          temperature: 0.3,
+          max_tokens: 2048
+        })
       });
 
       if (!res.ok) {
         const err = await res.json();
-        throw new Error('Gemini API: ' + (err.error?.message || res.status));
+        throw new Error('Groq API: ' + (err.error?.message || res.status));
       }
       const data = await res.json();
-      if (!data.candidates?.[0]) throw new Error('Sin respuesta de Gemini');
-      return data.candidates[0].content.parts[0].text;
+      if (!data.choices?.[0]) throw new Error('Sin respuesta de Groq');
+      return data.choices[0].message.content;
     }
 
     function formatearReceta(texto) {
