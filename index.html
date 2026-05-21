@@ -180,6 +180,40 @@
         </optgroup>
       </select>
     </div>
+    <div class="input-group" style="margin-top:14px;margin-bottom:0">
+      <label>Relleno</label>
+      <select id="rellenoInput">
+        <option value="">Sin relleno</option>
+        <optgroup label="── Mousses ──">
+          <option>Mousse de frutos rojos</option>
+          <option>Mousse de frambuesa</option>
+          <option>Mousse de fresa</option>
+          <option>Mousse de chocolate negro</option>
+          <option>Mousse de chocolate blanco</option>
+          <option>Mousse de mango</option>
+          <option>Mousse de limón</option>
+          <option>Mousse de maracuyá</option>
+        </optgroup>
+        <optgroup label="── Cremas ──">
+          <option>Crema pastelera</option>
+          <option>Crema diplomática</option>
+          <option>Crema de queso</option>
+          <option>Lemon curd</option>
+          <option>Nata montada</option>
+          <option>Trufa</option>
+          <option>Ganache de chocolate</option>
+          <option>Dulce de leche</option>
+          <option>Caramelo salado</option>
+        </optgroup>
+        <optgroup label="── Mermeladas / Frutas ──">
+          <option>Mermelada de frambuesa</option>
+          <option>Mermelada de fresa</option>
+          <option>Mermelada de albaricoque</option>
+          <option>Compota de frutos rojos</option>
+          <option>Compota de manzana</option>
+        </optgroup>
+      </select>
+    </div>
     <button class="btn-primary" id="btnBuscar" onclick="buscarReceta()" style="margin-top:16px">Buscar receta</button>
   </div>
 
@@ -198,6 +232,9 @@
         <a class="yt-btn" id="ytLink" target="_blank">▶ Ver</a>
       </div>
       <div class="recipe-card" id="recipeContent"></div>
+    </div>
+    <div class="card cobertura-strip" id="rellenoCard" style="display:none">
+      <div class="recipe-card" id="rellenoContent"></div>
     </div>
     <div class="card cobertura-strip" id="coberturaCard" style="display:none">
       <div class="recipe-card" id="coberturaContent"></div>
@@ -326,6 +363,7 @@ async function buscarReceta() {
   const personas = parseInt($('personasInput').value) || 8;
   const raciones = parseInt($('racionesInput').value) || 12;
   const cobertura = $('coberturaInput').value;
+  const relleno   = $('rellenoInput').value;
   if (!tarta) { $('tartaInput').focus(); return; }
 
   $('btnBuscar').disabled = true;
@@ -348,13 +386,19 @@ async function buscarReceta() {
     showRecetaLoading(`Preparando para ${personas} personas...`);
     const recetaTexto = await llamarGroq(promptReceta(tarta, personas, raciones, detalles.description, detalles.title));
 
+    let rellenoTexto = '';
+    if (relleno) {
+      showRecetaLoading(`Calculando relleno: ${relleno}...`);
+      rellenoTexto = await llamarGroq(promptRelleno(relleno, raciones, personas));
+    }
+
     let coberturaTexto = '';
     if (cobertura) {
-      showRecetaLoading(`Calculando ${cobertura}...`);
+      showRecetaLoading(`Calculando cobertura: ${cobertura}...`);
       coberturaTexto = await llamarGroq(promptCobertura(cobertura, raciones, personas));
     }
 
-    recetaActual = { tarta, personas, raciones, cobertura, recetaTexto, coberturaTexto, videoId: video.videoId, videoTitle: detalles.title };
+    recetaActual = { tarta, personas, raciones, relleno, cobertura, recetaTexto, rellenoTexto, coberturaTexto, videoId: video.videoId, videoTitle: detalles.title };
 
     $('recetaLoading').style.display = 'none';
     $('sourceBadge').textContent = esQC ? 'Quiero Cupcakes' : 'YouTube';
@@ -362,6 +406,12 @@ async function buscarReceta() {
     $('videoTitle').textContent  = detalles.title;
     $('ytLink').href = `https://www.youtube.com/watch?v=${video.videoId}`;
     $('recipeContent').innerHTML = formatReceta(recetaTexto);
+    if (rellenoTexto) {
+      $('rellenoContent').innerHTML = formatReceta(rellenoTexto);
+      $('rellenoCard').style.display = 'block';
+    } else {
+      $('rellenoCard').style.display = 'none';
+    }
     if (coberturaTexto) {
       $('coberturaContent').innerHTML = formatReceta(coberturaTexto);
       $('coberturaCard').style.display = 'block';
@@ -383,6 +433,8 @@ function nuevaBusqueda() {
   $('recetaError').style.display   = 'none';
   $('recetaEmpty').style.display   = 'block';
   $('searchCard').style.display    = 'block';
+  $('rellenoCard').style.display   = 'none';
+  $('coberturaCard').style.display = 'none';
   $('tartaInput').value = '';
   recetaActual = null;
   setTimeout(() => $('tartaInput').focus(), 100);
@@ -434,7 +486,16 @@ async function obtenerDetallesVideo(videoId) {
 // ── GROQ ─────────────────────────────────────────────────────
 async function llamarGroq(prompt, messages = null, vision = false) {
   const model = vision ? 'meta-llama/llama-4-scout-17b-16e-instruct' : 'llama-3.1-8b-instant';
-  const msgs  = messages || [{ role: 'user', content: prompt }];
+  let msgs = messages || [{ role: 'user', content: prompt }];
+  // Sanitize: non-vision model only accepts string content
+  if (!vision) {
+    msgs = msgs.map(m => ({
+      role: m.role,
+      content: Array.isArray(m.content)
+        ? (m.content.find(c => c.type === 'text')?.text || '')
+        : m.content
+    }));
+  }
   const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${GROQ_KEY}` },
@@ -461,6 +522,19 @@ Formato EXACTO (sin texto extra):
 temperatura y tiempos
 ## 💡 CONSEJOS
 1-2 trucos`;
+}
+
+function promptRelleno(relleno, raciones, personas) {
+  return `Eres el asistente de "Dulce Paraíso", pastelería artesanal española.
+Dame la receta de "${relleno}" para rellenar una tarta de ${raciones} raciones (${personas} personas). Ten en cuenta que habrá 2-3 capas de relleno.
+Formato EXACTO:
+## 🍓 ${relleno.toUpperCase()} — relleno para ${raciones} raciones
+## 🥚 INGREDIENTES
+- ingrediente: cantidad exacta
+## 👩‍🍳 PREPARACIÓN
+1. paso
+## 💡 CONSEJOS
+1-2 trucos para que quede perfecto`;
 }
 
 function promptCobertura(cobertura, raciones, personas) {
