@@ -99,6 +99,44 @@
       gap: 10px;
     }
 
+    .input-group select {
+      width: 100%;
+      padding: 13px 15px;
+      border: 2px solid var(--border);
+      border-radius: 12px;
+      font-size: 1rem;
+      color: var(--text);
+      background: var(--cream);
+      outline: none;
+      -webkit-appearance: none;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='8' viewBox='0 0 12 8'%3E%3Cpath d='M1 1l5 5 5-5' stroke='%237a5a7a' stroke-width='2' fill='none' stroke-linecap='round'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 14px center;
+    }
+
+    .cobertura-card {
+      background: white;
+      border-radius: 18px;
+      padding: 22px;
+      box-shadow: 0 4px 18px var(--shadow);
+      font-size: 0.95rem;
+      line-height: 1.75;
+      margin-top: 10px;
+      border-top: 3px solid var(--primary-light);
+    }
+
+    .cobertura-card h3 {
+      color: var(--primary-dark);
+      font-size: 0.95rem;
+      font-weight: 700;
+      margin: 20px 0 10px;
+      padding-bottom: 6px;
+      border-bottom: 1.5px solid var(--border);
+    }
+
+    .cobertura-card h3:first-child { margin-top: 0; }
+
     .btn-buscar {
       width: 100%;
       background: linear-gradient(135deg, var(--primary), var(--primary-dark));
@@ -283,6 +321,24 @@
         <input type="number" id="racionesInput" placeholder="12" min="1" max="500" value="12">
       </div>
     </div>
+    <div class="input-group">
+      <label>Cobertura / Relleno</label>
+      <select id="coberturaInput">
+        <option value="">Sin cobertura</option>
+        <option value="Buttercream de vainilla">Buttercream de vainilla</option>
+        <option value="Buttercream de chocolate">Buttercream de chocolate</option>
+        <option value="Buttercream de fresa">Buttercream de fresa</option>
+        <option value="Ganache de chocolate negro">Ganache de chocolate negro</option>
+        <option value="Ganache de chocolate blanco">Ganache de chocolate blanco</option>
+        <option value="Nata montada">Nata montada</option>
+        <option value="Crema de queso">Crema de queso</option>
+        <option value="Merengue italiano">Merengue italiano</option>
+        <option value="Trufa">Trufa</option>
+        <option value="Fondant">Fondant</option>
+        <option value="Crema pastelera">Crema pastelera</option>
+        <option value="Dulce de leche">Dulce de leche</option>
+      </select>
+    </div>
     <button class="btn-buscar" id="btnBuscar" onclick="buscarReceta()">
       Buscar receta
     </button>
@@ -302,6 +358,7 @@
       <a class="yt-btn" id="ytLink" target="_blank">▶ Ver</a>
     </div>
     <div class="recipe-card" id="recipeContent"></div>
+    <div class="cobertura-card" id="coberturaContent" style="display:none"></div>
   </div>
 
   <button class="btn-nueva" id="btnNueva" style="display:none" onclick="nuevaBusqueda()">
@@ -339,6 +396,7 @@
       const tarta = $('tartaInput').value.trim();
       const personas = parseInt($('personasInput').value) || 8;
       const raciones = parseInt($('racionesInput').value) || 12;
+      const cobertura = $('coberturaInput').value;
 
       if (!tarta) { $('tartaInput').focus(); return; }
 
@@ -367,17 +425,30 @@
         setLoading('Leyendo la receta del video...');
         const detalles = await obtenerDetallesVideo(video.videoId);
 
-        // 4. Procesar con Gemini
+        // 4. Procesar receta con Groq
         setLoading(`Preparando la receta para ${personas} personas...`);
         const receta = await procesarConGemini(tarta, personas, raciones, detalles.description, detalles.title);
 
-        // 5. Mostrar resultado
+        // 5. Procesar cobertura si se eligió una
+        let coberturaHtml = '';
+        if (cobertura) {
+          setLoading(`Calculando ${cobertura} para ${raciones} raciones...`);
+          coberturaHtml = await generarCobertura(cobertura, raciones, personas);
+        }
+
+        // 6. Mostrar resultado
         hide('loading');
         $('sourceBadge').textContent = esQC ? 'Quiero Cupcakes' : 'YouTube';
         $('sourceBadge').className = 'badge' + (esQC ? '' : ' other');
         $('videoTitle').textContent = detalles.title;
         $('ytLink').href = `https://www.youtube.com/watch?v=${video.videoId}`;
         $('recipeContent').innerHTML = formatearReceta(receta);
+        if (coberturaHtml) {
+          $('coberturaContent').innerHTML = formatearReceta(coberturaHtml);
+          $('coberturaContent').style.display = 'block';
+        } else {
+          $('coberturaContent').style.display = 'none';
+        }
         show('result');
         show('btnNueva');
 
@@ -474,6 +545,50 @@ Responde ÚNICAMENTE con este formato (sin texto adicional antes ni después):
       return data.choices[0].message.content;
     }
 
+    async function generarCobertura(cobertura, raciones, personas) {
+      const prompt = `Eres el asistente de repostería de "Dulce Paraíso", una pastelería artesanal española.
+
+Necesito la receta de "${cobertura}" para cubrir y rellenar una tarta de ${raciones} raciones (${personas} personas).
+
+Responde ÚNICAMENTE con este formato:
+
+## 🎨 ${cobertura.toUpperCase()} — ${raciones} raciones
+
+## 🥚 INGREDIENTES
+- [ingrediente]: [cantidad exacta]
+- [ingrediente]: [cantidad exacta]
+
+## 👩‍🍳 PREPARACIÓN
+1. [paso]
+2. [paso]
+
+## 💡 CONSEJOS
+[1-2 trucos clave para que quede perfecta]`;
+
+      const url = `https://api.groq.com/openai/v1/chat/completions`;
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${GROQ_KEY}`
+        },
+        body: JSON.stringify({
+          model: 'llama-3.1-8b-instant',
+          messages: [{ role: 'user', content: prompt }],
+          temperature: 0.3,
+          max_tokens: 1024
+        })
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error('Groq API: ' + (err.error?.message || res.status));
+      }
+      const data = await res.json();
+      if (!data.choices?.[0]) throw new Error('Sin respuesta de Groq');
+      return data.choices[0].message.content;
+    }
+
     function formatearReceta(texto) {
       return texto
         .replace(/^## (.+)$/gm, '<h3>$1</h3>')
@@ -483,6 +598,7 @@ Responde ÚNICAMENTE con este formato (sin texto adicional antes ni después):
 
     function nuevaBusqueda() {
       hide('result'); hide('errorBox'); hide('btnNueva'); hide('loading');
+      $('coberturaContent').style.display = 'none';
       show('searchCard');
       show('emptyState');
       $('tartaInput').value = '';
