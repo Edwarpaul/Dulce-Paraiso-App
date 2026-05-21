@@ -1,0 +1,493 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Recetas DP">
+  <meta name="theme-color" content="#9b5f8a">
+  <title>Recetas · Dulce Paraíso</title>
+  <link rel="manifest" href="manifest.json">
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+
+    :root {
+      --primary: #b56fa0;
+      --primary-light: #d4a0c8;
+      --primary-dark: #8b4a7a;
+      --cream: #fdf8f2;
+      --text: #2d1f2d;
+      --text-light: #7a5a7a;
+      --border: #f0dcea;
+      --shadow: rgba(139, 74, 122, 0.15);
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      background: var(--cream);
+      color: var(--text);
+      min-height: 100vh;
+      padding-bottom: calc(24px + env(safe-area-inset-bottom));
+    }
+
+    .header {
+      background: linear-gradient(145deg, var(--primary-dark) 0%, var(--primary) 100%);
+      padding: 20px 20px 36px;
+      padding-top: calc(20px + env(safe-area-inset-top));
+      text-align: center;
+    }
+
+    .header h1 {
+      font-family: Georgia, 'Times New Roman', serif;
+      color: white;
+      font-size: 1.75rem;
+      font-weight: normal;
+      letter-spacing: 0.3px;
+    }
+
+    .header p {
+      color: rgba(255,255,255,0.75);
+      font-size: 0.85rem;
+      margin-top: 4px;
+      letter-spacing: 1.5px;
+      text-transform: uppercase;
+    }
+
+    .search-card {
+      background: white;
+      border-radius: 22px;
+      margin: -18px 16px 0;
+      padding: 22px;
+      box-shadow: 0 10px 40px var(--shadow);
+    }
+
+    .input-group { margin-bottom: 14px; }
+
+    .input-group label {
+      display: block;
+      font-size: 0.72rem;
+      font-weight: 700;
+      color: var(--text-light);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 7px;
+    }
+
+    .input-group input {
+      width: 100%;
+      padding: 13px 15px;
+      border: 2px solid var(--border);
+      border-radius: 12px;
+      font-size: 1rem;
+      color: var(--text);
+      background: var(--cream);
+      outline: none;
+      transition: border-color 0.2s, background 0.2s;
+      -webkit-appearance: none;
+    }
+
+    .input-group input:focus {
+      border-color: var(--primary);
+      background: white;
+    }
+
+    .input-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+    }
+
+    .btn-buscar {
+      width: 100%;
+      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+      color: white;
+      border: none;
+      border-radius: 14px;
+      padding: 15px;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      margin-top: 6px;
+      transition: opacity 0.2s, transform 0.1s;
+      letter-spacing: 0.2px;
+    }
+
+    .btn-buscar:active { transform: scale(0.98); opacity: 0.9; }
+    .btn-buscar:disabled { opacity: 0.55; }
+
+    .loading {
+      text-align: center;
+      padding: 44px 20px;
+      display: none;
+    }
+
+    .spinner {
+      width: 44px;
+      height: 44px;
+      border: 3px solid var(--border);
+      border-top-color: var(--primary);
+      border-radius: 50%;
+      animation: spin 0.75s linear infinite;
+      margin: 0 auto 14px;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .loading p { color: var(--text-light); font-size: 0.9rem; }
+
+    .result { margin: 20px 16px 0; display: none; }
+
+    .result-meta {
+      background: white;
+      border-radius: 14px;
+      padding: 13px 15px;
+      margin-bottom: 10px;
+      box-shadow: 0 4px 18px var(--shadow);
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .badge {
+      background: var(--primary);
+      color: white;
+      font-size: 0.68rem;
+      font-weight: 700;
+      padding: 4px 9px;
+      border-radius: 20px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .badge.other { background: #d4845a; }
+
+    .video-title {
+      font-size: 0.82rem;
+      color: var(--text-light);
+      flex: 1;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .yt-btn {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      background: #ff0000;
+      color: white;
+      text-decoration: none;
+      font-size: 0.72rem;
+      font-weight: 700;
+      padding: 5px 10px;
+      border-radius: 8px;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    .recipe-card {
+      background: white;
+      border-radius: 18px;
+      padding: 22px;
+      box-shadow: 0 4px 18px var(--shadow);
+      font-size: 0.95rem;
+      line-height: 1.75;
+    }
+
+    .recipe-card h3 {
+      color: var(--primary-dark);
+      font-size: 0.95rem;
+      font-weight: 700;
+      margin: 20px 0 10px;
+      padding-bottom: 6px;
+      border-bottom: 1.5px solid var(--border);
+    }
+
+    .recipe-card h3:first-child { margin-top: 0; }
+
+    .recipe-card p { margin-bottom: 6px; }
+
+    .no-recipe {
+      background: #fff8e8;
+      border: 1.5px solid #f5d87a;
+      border-radius: 14px;
+      padding: 16px;
+      color: #7a5a00;
+      font-size: 0.88rem;
+      line-height: 1.6;
+      margin-bottom: 10px;
+    }
+
+    .error-box {
+      background: #fff3f3;
+      border: 1.5px solid #ffcdd2;
+      border-radius: 14px;
+      padding: 16px;
+      margin: 20px 16px 0;
+      color: #b71c1c;
+      font-size: 0.88rem;
+      line-height: 1.6;
+      display: none;
+    }
+
+    .btn-nueva {
+      display: block;
+      width: calc(100% - 32px);
+      margin: 14px 16px 0;
+      background: transparent;
+      color: var(--primary);
+      border: 2px solid var(--primary-light);
+      border-radius: 14px;
+      padding: 13px;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      text-align: center;
+    }
+
+    .btn-nueva:active { opacity: 0.7; }
+
+    .empty {
+      text-align: center;
+      padding: 52px 24px;
+      color: var(--text-light);
+    }
+
+    .empty .icon { font-size: 3.5rem; margin-bottom: 14px; }
+    .empty p { font-size: 0.9rem; line-height: 1.65; }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <h1>🎂 Recetas</h1>
+    <p>Dulce Paraíso</p>
+  </div>
+
+  <div class="search-card" id="searchCard">
+    <div class="input-group">
+      <label>¿Qué tarta necesitas?</label>
+      <input type="text" id="tartaInput" placeholder="ej: tarta de chocolate" autocomplete="off" autocorrect="off" autocapitalize="off">
+    </div>
+    <div class="input-row">
+      <div class="input-group" style="margin-bottom:0">
+        <label>Personas</label>
+        <input type="number" id="personasInput" placeholder="8" min="1" max="500" value="8">
+      </div>
+      <div class="input-group" style="margin-bottom:0">
+        <label>Raciones</label>
+        <input type="number" id="racionesInput" placeholder="12" min="1" max="500" value="12">
+      </div>
+    </div>
+    <button class="btn-buscar" id="btnBuscar" onclick="buscarReceta()">
+      Buscar receta
+    </button>
+  </div>
+
+  <div class="loading" id="loading">
+    <div class="spinner"></div>
+    <p id="loadingText">Buscando en Quiero Cupcakes...</p>
+  </div>
+
+  <div class="error-box" id="errorBox"></div>
+
+  <div class="result" id="result">
+    <div class="result-meta">
+      <span class="badge" id="sourceBadge">Quiero Cupcakes</span>
+      <span class="video-title" id="videoTitle"></span>
+      <a class="yt-btn" id="ytLink" target="_blank">▶ Ver</a>
+    </div>
+    <div class="recipe-card" id="recipeContent"></div>
+  </div>
+
+  <button class="btn-nueva" id="btnNueva" style="display:none" onclick="nuevaBusqueda()">
+    ← Nueva búsqueda
+  </button>
+
+  <div class="empty" id="emptyState">
+    <div class="icon">🧁</div>
+    <p>Escribe el nombre de la tarta<br>y el número de personas.<br>Buscamos la receta por ti.</p>
+  </div>
+
+  <script>
+    const YT_KEY = 'AIzaSyAzwMnrANI2YEW0em3fPil0LZrScecZbYQ';
+    const GM_KEY = 'AIzaSyCZDEnc_nbmkWSmrZNuxsMK8PkvsdFP-SY';
+
+    const $ = id => document.getElementById(id);
+    const show = id => $(id).style.display = 'block';
+    const hide = id => $(id).style.display = 'none';
+
+    function setLoading(msg) {
+      hide('result'); hide('errorBox'); hide('emptyState'); hide('btnNueva');
+      $('loadingText').textContent = msg;
+      show('loading');
+    }
+
+    function showError(msg) {
+      hide('loading');
+      $('errorBox').textContent = msg;
+      show('errorBox');
+      show('btnNueva');
+      show('searchCard');
+    }
+
+    async function buscarReceta() {
+      const tarta = $('tartaInput').value.trim();
+      const personas = parseInt($('personasInput').value) || 8;
+      const raciones = parseInt($('racionesInput').value) || 12;
+
+      if (!tarta) { $('tartaInput').focus(); return; }
+
+      $('btnBuscar').disabled = true;
+      hide('searchCard');
+
+      try {
+        // 1. Buscar en Quiero Cupcakes
+        setLoading('Buscando en Quiero Cupcakes...');
+        let video = await buscarEnYT(`quiero cupcakes ${tarta} receta`, 'quiero cupcakes');
+        let esQC = !!video;
+
+        // 2. Fallback: búsqueda general
+        if (!video) {
+          setLoading('Buscando en otras fuentes de repostería...');
+          video = await buscarEnYT(`receta tarta ${tarta} paso a paso bizcocho`, null);
+        }
+
+        if (!video) {
+          showError(`No encontré ningún video de receta para "${tarta}". Prueba con otro nombre.`);
+          $('btnBuscar').disabled = false;
+          return;
+        }
+
+        // 3. Obtener descripción del video
+        setLoading('Leyendo la receta del video...');
+        const detalles = await obtenerDetallesVideo(video.videoId);
+
+        // 4. Procesar con Gemini
+        setLoading(`Preparando la receta para ${personas} personas...`);
+        const receta = await procesarConGemini(tarta, personas, raciones, detalles.description, detalles.title);
+
+        // 5. Mostrar resultado
+        hide('loading');
+        $('sourceBadge').textContent = esQC ? 'Quiero Cupcakes' : 'YouTube';
+        $('sourceBadge').className = 'badge' + (esQC ? '' : ' other');
+        $('videoTitle').textContent = detalles.title;
+        $('ytLink').href = `https://www.youtube.com/watch?v=${video.videoId}`;
+        $('recipeContent').innerHTML = formatearReceta(receta);
+        show('result');
+        show('btnNueva');
+
+      } catch (e) {
+        showError('Error: ' + e.message + '. Verifica tu conexión e inténtalo de nuevo.');
+      }
+
+      $('btnBuscar').disabled = false;
+    }
+
+    async function buscarEnYT(query, filtroCanal) {
+      const url = `https://www.googleapis.com/youtube/v3/search?part=snippet&q=${encodeURIComponent(query)}&type=video&maxResults=10&relevanceLanguage=es&key=${YT_KEY}`;
+      const res = await fetch(url);
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error('YouTube API: ' + (err.error?.message || res.status));
+      }
+      const data = await res.json();
+      if (!data.items?.length) return null;
+
+      if (filtroCanal) {
+        const match = data.items.find(i =>
+          i.snippet.channelTitle.toLowerCase().includes(filtroCanal.toLowerCase())
+        );
+        if (!match) return null;
+        return { videoId: match.id.videoId };
+      }
+
+      return { videoId: data.items[0].id.videoId };
+    }
+
+    async function obtenerDetallesVideo(videoId) {
+      const url = `https://www.googleapis.com/youtube/v3/videos?part=snippet&id=${videoId}&key=${YT_KEY}`;
+      const res = await fetch(url);
+      const data = await res.json();
+      if (!data.items?.length) throw new Error('Video no encontrado');
+      return {
+        title: data.items[0].snippet.title,
+        description: data.items[0].snippet.description
+      };
+    }
+
+    async function procesarConGemini(tarta, personas, raciones, descripcion, titulo) {
+      const prompt = `Eres el asistente de recetas de "Dulce Paraíso", una pastelería artesanal española.
+
+Video: "${titulo}"
+
+DESCRIPCIÓN DEL VIDEO (aquí está la receta):
+${descripcion.substring(0, 5000)}
+
+INSTRUCCIÓN:
+Extrae la receta de "${tarta}" de esta descripción y escálala para ${raciones} raciones (${personas} personas).
+Si la descripción no tiene los ingredientes, igualmente extrae los pasos y da cantidades estimadas para ${raciones} raciones basándote en tu conocimiento.
+
+Responde ÚNICAMENTE con este formato (sin texto adicional antes ni después):
+
+## 🥚 INGREDIENTES — ${raciones} raciones
+- [ingrediente]: [cantidad]
+- [ingrediente]: [cantidad]
+...
+
+## 👩‍🍳 PREPARACIÓN
+1. [paso detallado]
+2. [paso detallado]
+...
+
+## ⏱️ TIEMPOS
+[Temperatura y tiempos de horneado]
+
+## 💡 CONSEJOS
+[1-3 trucos útiles de la receta]`;
+
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${GM_KEY}`;
+      const res = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+      });
+
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error('Gemini API: ' + (err.error?.message || res.status));
+      }
+      const data = await res.json();
+      if (!data.candidates?.[0]) throw new Error('Sin respuesta de Gemini');
+      return data.candidates[0].content.parts[0].text;
+    }
+
+    function formatearReceta(texto) {
+      return texto
+        .replace(/^## (.+)$/gm, '<h3>$1</h3>')
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\n/g, '<br>');
+    }
+
+    function nuevaBusqueda() {
+      hide('result'); hide('errorBox'); hide('btnNueva'); hide('loading');
+      show('searchCard');
+      show('emptyState');
+      $('tartaInput').value = '';
+      setTimeout(() => $('tartaInput').focus(), 100);
+    }
+
+    $('tartaInput').addEventListener('keydown', e => {
+      if (e.key === 'Enter') buscarReceta();
+    });
+
+    // Register service worker
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js').catch(() => {});
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,22 @@
+{
+  "name": "Recetas Dulce Paraíso",
+  "short_name": "Recetas DP",
+  "description": "Busca y escala recetas de tartas para Dulce Paraíso",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#fdf8f2",
+  "theme_color": "#9b5f8a",
+  "orientation": "portrait",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png"
+    }
+  ]
+}
