@@ -1,4 +1,4 @@
-const CACHE = 'recetas-dp-v1';
+const CACHE = 'recetas-dp-v3';
 const ASSETS = ['/', '/index.html', '/manifest.json'];
 
 self.addEventListener('install', e => {
